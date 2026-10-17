@@ -1,91 +1,78 @@
-"use client";
-import { useState } from 'react';
+'use client'
+import { useState } from 'react'
 
-export default function Page(){
-  const [planType, setPlanType] = useState<'pro'|'starter'>('pro');
-  const [form, setForm] = useState({artist:'', song:'', phone:'', plan:''});
-  const [done, setDone] = useState(false);
+export default function Home() {
+  const [email, setEmail] = useState('')
 
-  const PRO = [
-    {id:'pro-single', name:'Single', desc:'1-2 Songs', price:100, link:'https://paystack.com/pay/de1st-pro-single'},
-    {id:'pro-mixtape', name:'Mixtape / EP', desc:'3-6 Songs', price:250, pop:true, link:'https://paystack.com/pay/de1st-pro-mixtape'},
-    {id:'pro-album', name:'Album', desc:'7+ Songs', price:300, link:'https://paystack.com/pay/de1st-pro-album'},
-  ];
-  const STARTER = [
-    {id:'starter-single', name:'Single', desc:'1-2 Songs', price:70, was:100},
-    {id:'starter-mixtape', name:'Mixtape / EP', desc:'3-6 Songs', price:175, was:250},
-    {id:'starter-album', name:'Album', desc:'7+ Songs', price:210, was:300},
-  ];
+  const plans = [
+    { id: 'single', name: 'SINGLE', price: 100, sub: '/single 0% commission', pop: false },
+    { id: 'ep', name: 'EP', price: 200, sub: '/EP 0% commission', pop: false },
+    { id: 'album', name: 'ALBUM', price: 250, sub: '/album 0% commission', pop: false },
+    { id: 'unlimited', name: 'UNLIMITED', price: 350, sub: '/year 0% commission unlimited uploads', pop: true },
+  ]
 
-  const handleUpload = async (e:any) => {
-    e.preventDefault();
-    // SECURE: save with ownerId check later
-    const res = await fetch('/api/upload', {method:'POST', body: JSON.stringify(form), headers:{'Content-Type':'application/json'}});
-    if(res.ok){ setDone(true); setForm({artist:'',song:'',phone:'',plan:''}); }
-  };
-
-  const list = planType==='pro'? PRO : STARTER;
+  const pay = (plan: any) => {
+    // @ts-ignore
+    if(typeof PaystackPop === 'undefined'){ alert('Add Paystack keys in .env'); return }
+    // @ts-ignore
+    const handler = PaystackPop.setup({
+      key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
+      email: email || 'artist@de1stdistro.co.za',
+      amount: plan.price * 100,
+      currency: 'ZAR',
+      ref: 'DE1ST-'+Date.now(),
+      metadata: { custom_fields: [{ display_name: "Plan", variable_name: "plan", value: plan.id }] },
+      callback: (res: any) => {
+        fetch('/api/paystack-verify', { method: 'POST', body: JSON.stringify({ ref: res.reference, plan: plan.id, email }) })
+        alert('Payment successful! Plan: '+plan.name+' - You will be redirected')
+        window.location.href = '/dashboard'
+      },
+      onClose: () => alert('Payment cancelled')
+    })
+    handler.openIframe()
+  }
 
   return (
-    <main style={{color:'#fff'}}>
-      <div style={{maxWidth:1300, margin:'0 auto', padding:'20px 16px'}}>
-        <div style={{fontWeight:900, letterSpacing:2, color:'#00e5ff'}}>DE 1ST DISTRO 🇿🇦</div>
+    <div className="min-h-screen bg-[#040a0f] text-white">
+      {/* HERO WITH YOUR IMAGE */}
+      <div className="relative w-full h-[85vh] bg-black overflow-hidden">
+        <img src="/posters/hero.jpg" alt="De 1st Distro" className="w-full h-full object-cover object-top" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#040a0f] via-black/20 to-transparent" />
+        <div className="absolute top-0 w-full flex justify-between p-4 md:p-6">
+          <h1 className="font-black text-cyan-300 text-xl">DE 1ST DISTRO 🇿🇦</h1>
+          <a href="/admin" className="text-xs border border-cyan-400 px-4 py-2 rounded-full">ADMIN</a>
+        </div>
+        <div className="absolute bottom-0 w-full p-6 text-center">
+          <div className="inline-flex gap-2 text-[10px] bg-black/60 px-3 py-1 rounded-full border border-cyan-500/30">UPLOAD UNLIMITED MUSIC TO EVERY MAJOR PLATFORM • ANY SONG • ANY GENRE</div>
+        </div>
       </div>
 
-      {/* HERO */}
-      <section style={{margin:'0 16px', borderRadius:32, overflow:'hidden', backgroundImage:'url(/hero.jpg)', backgroundSize:'cover', backgroundPosition:'center', border:'1px solid #123'}}>
-        <div style={{background:'linear-gradient(to bottom, rgba(0,0,0,0.2), #020a14)', padding:'80px 20px', textAlign:'center'}}>
-          <h1 style={{fontSize:'clamp(40px,9vw,90px)', fontWeight:900, lineHeight:0.9}}>UPLOAD<br/>UNLIMITED<br/><span style={{color:'#00e5ff'}}>MUSIC</span></h1>
-          <p style={{opacity:0.8, marginTop:20}}>Spotify, Apple, TikTok +150 stores • 0% Commission Available</p>
-        </div>
-      </section>
-
-      {/* PRICING */}
-      <section id="pricing" style={{maxWidth:1100, margin:'60px auto', padding:'0 16px'}}>
-        <div style={{display:'flex', justifyContent:'center', gap:8, background:'#0a1930', width:'fit-content', margin:'0 auto', padding:6, borderRadius:999, border:'1px solid #1a2a4a'}}>
-          <button onClick={()=>setPlanType('pro')} style={{padding:'10px 24px', borderRadius:999, background:planType==='pro'?'#00e5ff':'transparent', color:planType==='pro'?'#000':'#fff', fontWeight:800, border:'none'}}>PRO 0% COMM</button>
-          <button onClick={()=>setPlanType('starter')} style={{padding:'10px 24px', borderRadius:999, background:planType==='starter'?'#fff':'transparent', color:planType==='starter'?'#000':'#fff', fontWeight:800, border:'none'}}>STARTER -30% +10%</button>
+      {/* PLANS */}
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <h2 className="text-center text-3xl font-black text-cyan-300">MAIN PLANS</h2>
+        <p className="text-center text-sm opacity-60 mt-2">Choose the plan that fits your release. All plans 0% commission.</p>
+        
+        <div className="bg-[#ffcc00] text-black text-center font-black py-2 rounded-full mt-6 text-sm">
+          ALL PLANS 30% OFF + 10% COMMISSION SPECIAL
         </div>
 
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:20, marginTop:32}}>
-          {list.map((p:any)=>(
-            <div key={p.id} style={{background:'#0e1e36', border:p.pop?'2px solid #00e5ff':'1px solid #1e335c', borderRadius:24, padding:28}}>
-              {p.pop && <div style={{background:'#00e5ff', color:'#000', fontSize:10, fontWeight:800, padding:'4px 10px', borderRadius:999, display:'inline-block', marginBottom:12}}>MOST POPULAR</div>}
-              <h3 style={{fontSize:24, fontWeight:900, margin:0}}>{p.name}</h3>
-              <div style={{fontSize:12, opacity:0.6}}>{p.desc}</div>
-              <div style={{display:'flex', gap:10, alignItems:'baseline', margin:'20px 0'}}>
-                <div style={{fontSize:44, fontWeight:900}}>R{p.price}</div>
-                {p.was && <><span style={{textDecoration:'line-through', opacity:0.5}}>R{p.was}</span><span style={{background:'#6d28d9', padding:'2px 8px', borderRadius:999, fontSize:10}}>-30%</span></>}
-              </div>
-              <div style={{fontSize:12, opacity:0.7, marginBottom:20}}>
-                {planType==='pro' ? '✓ 0% Commission • Keep 100% • ℗ DE 1ST DISTRO' : '✓ 10% Commission • Cheaper upfront • Same stores'}
-              </div>
-              <a href={p.link || '#upload'} onClick={()=>setForm({...form, plan:`${p.name} - R${p.price} (${planType})`})} style={{display:'block', textAlign:'center', background:'#00e5ff', color:'#000', padding:'14px', borderRadius:12, fontWeight:900, textDecoration:'none'}}>CHOOSE {p.name.toUpperCase()}</a>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+          {plans.map(p => (
+            <div key={p.id} className={`p-5 rounded-2xl border ${p.pop ? 'bg-cyan-950/30 border-yellow-300' : 'bg-gray-900/40 border-cyan-900/50'}`}>
+              {p.pop && <span className="bg-yellow-300 text-black text-[10px] px-2 py-1 rounded-full font-bold">POPULAR</span>}
+              <h3 className="font-bold text-cyan-300 mt-2">{p.name}</h3>
+              <p className="text-3xl font-black">R{p.price}<span className="text-xs font-normal opacity-70">{p.sub}</span></p>
+              <input placeholder="Your email for receipt" value={email} onChange={e=>setEmail(e.target.value)} className="w-full mt-4 bg-black border border-gray-700 rounded-full px-4 py-2 text-xs" />
+              <button onClick={()=>pay(p)} className={`w-full mt-3 py-3 rounded-full font-bold text-sm ${p.pop ? 'bg-yellow-300 text-black' : 'border border-cyan-400 text-cyan-300'}`}>🔒 Pay with Paystack</button>
             </div>
           ))}
         </div>
-      </section>
 
-      {/* UPLOAD FORM - PRIVATE, NO WHATSAPP */}
-      <section id="upload" style={{maxWidth:600, margin:'0 auto', padding:'0 16px 60px'}}>
-        <div style={{background:'#0a1930', border:'1px solid #1a2a4a', borderRadius:24, padding:28}}>
-          <h2 style={{fontWeight:900}}>Upload Music (Private - Admin Only)</h2>
-          <p style={{fontSize:12, opacity:0.6}}>This does NOT go to WhatsApp. Only you see it in /admin</p>
-          <form onSubmit={handleUpload} style={{display:'grid', gap:12, marginTop:20}}>
-            <input required placeholder="Artist Name" value={form.artist} onChange={e=>setForm({...form, artist:e.target.value})} style={{padding:12, borderRadius:10, border:'1px solid #333', background:'#020a14', color:'#fff'}}/>
-            <input required placeholder="Song / Mixtape Title" value={form.song} onChange={e=>setForm({...form, song:e.target.value})} style={{padding:12, borderRadius:10, border:'1px solid #333', background:'#020a14', color:'#fff'}}/>
-            <input required placeholder="WhatsApp Number" value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})} style={{padding:12, borderRadius:10, border:'1px solid #333', background:'#020a14', color:'#fff'}}/>
-            <input placeholder="Selected Plan" value={form.plan} onChange={e=>setForm({...form, plan:e.target.value})} style={{padding:12, borderRadius:10, border:'1px solid #333', background:'#020a14', color:'#fff'}}/>
-            <button type="submit" style={{background:'#00e5ff', color:'#000', fontWeight:900, padding:14, borderRadius:12, border:'none'}}>SUBMIT UPLOAD (Private)</button>
-            {done && <div style={{background:'#10b981', padding:12, borderRadius:10, textAlign:'center'}}>✅ Upload saved to Admin Dashboard. No WhatsApp sent.</div>}
-          </form>
+        <div className="flex flex-wrap justify-center gap-4 mt-10 opacity-70 text-xs">
+          <span>Spotify</span><span>Apple Music</span><span>TikTok</span><span>YouTube</span><span>Deezer</span><span>Tidal</span><span>+100s more</span>
         </div>
-      </section>
-
-      {/* ARCHITECTURE POSTER */}
-      <section style={{maxWidth:1100, margin:'0 auto', padding:'0 16px 80px'}}>
-        <img src="/architecture.jpg" alt="De1st Architecture" style={{width:'100%', borderRadius:24, border:'1px solid #1a2a4a'}}/>
-      </section>
-    </main>
+      </div>
+      <script src="https://js.paystack.co/v1/inline.js"></script>
+    </div>
   )
-      }
+}
